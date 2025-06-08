@@ -1,11 +1,25 @@
+from abc import ABC, abstractmethod
 import numpy as np
 from tqdm import tqdm
 from utils import evaluate_model
 
-class ActiveLearner:
-    def __init__(self, model, query_strategy):
+
+class Learner(ABC):
+    def __init__(self, model):
         self.model = model
+
+    @abstractmethod
+    def train(
+        self,
+        *args,
+        **kwargs
+    ):
+        pass
+
+class ActiveLearner(Learner):
+    def __init__(self, model, query_strategy):
         self.query_strategy = query_strategy
+        super().__init__(model)
 
     def train(
         self,
@@ -15,10 +29,9 @@ class ActiveLearner:
         y_pool,
         X_test,
         y_test,
-        n_queries=10,
-        query_size=10,
+        n_queries,
+        query_size,
     ):
-        # Convert to arrays immediately for consistent indexing
         X_train = np.asarray(X_train)
         y_train = np.asarray(y_train)
         X_pool = np.asarray(X_pool)
@@ -37,18 +50,30 @@ class ActiveLearner:
         
             probs = self.model.predict_proba(X_pool)
             indices = self.query_strategy.select(probs, query_size)
-            
-            # Ensure indices is a 1D array of integers
             indices = np.array(indices).flatten().astype(int)
             
-            # Add queried samples to training set
             X_train = np.vstack([X_train, X_pool[indices]])
             y_train = np.concatenate([y_train, y_pool[indices]])
             
-            # Remove queried samples from pool using mask
             mask = np.ones(len(X_pool), dtype=bool)
             mask[indices] = False
+
             X_pool = X_pool[mask]
             y_pool = y_pool[mask]
+
+        return metrics
+
+
+class FullLearner(Learner):
+    def train(
+        self,
+        X_full,
+        y_full,
+        X_test,
+        y_test
+    ):
+        self.model.fit(X_full, y_full)
+        metrics = evaluate_model(self.model, X_test, y_test)
+        metrics["train_dataset_size"] = len(X_full)
 
         return metrics
