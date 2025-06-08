@@ -18,7 +18,7 @@ class RandomSampling(QueryStrategy):
 class LeastConfidence(QueryStrategy):
     def select(self, probs, n):
         confidences = probs.max(axis=1)
-        return np.argsort(confidences)[:n]
+        return np.argsort(confidences)[:n]  # lowest confidence = most uncertain
 
 
 class MarginSampling(QueryStrategy):
@@ -30,5 +30,5 @@ class MarginSampling(QueryStrategy):
 
 class EntropySampling(QueryStrategy):
     def select(self, probs, n):
-        entropies = entropy(probs.T)  
-        return np.argsort(entropies)[-n:]
+        entropies = entropy(probs, axis=1)  # FIXED here
+        return np.argsort(entropies)[-n:]  # highest entropy = most uncertain
